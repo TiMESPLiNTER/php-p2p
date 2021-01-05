@@ -1,0 +1,14 @@
+{
+  "require": {
+    "php": ">=7.4",
+    "ext-json": "*",
+    "react/socket": "^0.8.12",
+    "react/http": "^v0.8.7",
+    "ramsey/uuid": "^4.1.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "Timesplinter\\P2P\\": "src/"
+    }
+  }
+}
