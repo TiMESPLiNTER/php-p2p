@@ -6,9 +6,10 @@ namespace Timesplinter\P2P\MessageHandler;
 
 use React\Socket\ConnectionInterface;
 use Timesplinter\P2P\ConnectionPool\ConnectionPoolInterface;
-use Timesplinter\P2P\Message;
+use Timesplinter\P2P\Message\MessageFactoryInterface;
 use Timesplinter\P2P\MessageHandlerInterface;
-use Timesplinter\P2P\MessageInterface;
+use Timesplinter\P2P\Message\MessageInterface;
+use Timesplinter\P2P\NodeInterface;
 
 final class VersionMessageHandler implements MessageHandlerInterface
 {
@@ -18,11 +19,18 @@ final class VersionMessageHandler implements MessageHandlerInterface
 
     private string $acceptedVersion;
 
-    public function __construct(string $nodeId, string $acceptedVersion, ConnectionPoolInterface $connectionPool)
-    {
+    private MessageFactoryInterface $messageFactory;
+
+    public function __construct(
+        string $nodeId,
+        string $acceptedVersion,
+        ConnectionPoolInterface $connectionPool,
+        MessageFactoryInterface $messageFactory
+    ) {
         $this->nodeId = $nodeId;
         $this->acceptedVersion = $acceptedVersion;
         $this->connectionPool = $connectionPool;
+        $this->messageFactory = $messageFactory;
     }
 
     public function handle(ConnectionInterface $connection, MessageInterface $message)
@@ -55,7 +63,7 @@ final class VersionMessageHandler implements MessageHandlerInterface
         $connectionInfo->nodeId = $message->getPayload()['node_id'];
         $connectionInfo->version = $message->getPayload()['version'];
 
-        $versionAcknowledgeMessage = new Message(Message::TYPE_VERSION_ACKNOWLEDGED);
-        $connection->write((string) $versionAcknowledgeMessage);
+        $versionAcknowledgeMessage = $this->messageFactory->createVersionAcknowledgeMessage();
+        $connection->write($versionAcknowledgeMessage . NodeInterface::MESSAGE_TERMINATOR);
     }
 }

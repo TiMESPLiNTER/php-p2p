@@ -2,14 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Timesplinter\P2P;
+namespace Timesplinter\P2P\Message;
 
 use Ramsey\Uuid\Uuid;
 
-class Message implements MessageInterface
+final class SimpleMessage implements MessageInterface
 {
-    public const MESSAGE_TERMINATOR = "---EOF---";
-
     public const TYPE_VERSION_ACKNOWLEDGED = 'verack';
 
     public const TYPE_VERSION = 'version';
@@ -53,7 +51,7 @@ class Message implements MessageInterface
         }
 
         try {
-            return new Message(
+            return new SimpleMessage(
                 base64_decode($commandParts[0]),
                 self::json_decode(base64_decode($commandParts[2])),
                 self::json_decode(base64_decode($commandParts[1]))
@@ -93,11 +91,10 @@ class Message implements MessageInterface
         $payload = self::json_encode($this->payload);
 
         return sprintf(
-            "%s.%s.%s%s",
+            "%s.%s.%s",
             base64_encode($this->type),
             base64_encode($headers),
-            base64_encode($payload),
-            self::MESSAGE_TERMINATOR
+            base64_encode($payload)
         );
     }
 

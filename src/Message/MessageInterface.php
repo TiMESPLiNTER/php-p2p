@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-
-namespace Timesplinter\P2P;
-
+namespace Timesplinter\P2P\Message;
 
 interface MessageInterface
 {

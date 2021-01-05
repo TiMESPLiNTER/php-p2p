@@ -6,6 +6,7 @@ namespace Timesplinter\P2P;
 
 use React\Socket\ConnectionInterface;
 use Timesplinter\P2P\ConnectionPool\ConnectionPoolInterface;
+use Timesplinter\P2P\Message\MessageFactoryInterface;
 
 final class NodeEventHandler implements NodeEventHandlerInterface
 {
@@ -17,8 +18,14 @@ final class NodeEventHandler implements NodeEventHandlerInterface
 
     private ?NodeInterface $node;
 
-    public function __construct(MessageHandlerInterface $messageHandler, ConnectionPoolInterface $connectionPool)
-    {
+    private MessageFactoryInterface $messageFactory;
+
+    public function __construct(
+        MessageFactoryInterface $messageFactory,
+        MessageHandlerInterface $messageHandler,
+        ConnectionPoolInterface $connectionPool
+    ) {
+        $this->messageFactory = $messageFactory;
         $this->messageHandler = $messageHandler;
         $this->connectionPool = $connectionPool;
     }
@@ -35,25 +42,25 @@ final class NodeEventHandler implements NodeEventHandlerInterface
         echo sprintf("[%s] Connected\n", $connection->getRemoteAddress());
         echo sprintf("Total peers connected: %d\n", $this->connectionPool->count());
 
-        $versionMessage = new Message(Message::TYPE_VERSION, [
-            'version' => self::NODE_VERSION,
-            'node_id' => $this->node->getNodeId(),
-            'addr_from' => $this->node->getAddress(),
-        ]);
+        $versionMessage = $this->messageFactory->createVersionMessage(
+            $this->node->getNodeId(),
+            self::NODE_VERSION,
+            $this->node->getAddress()
+        );
 
-        $connection->write((string) $versionMessage);
+        $connection->write($versionMessage . NodeInterface::MESSAGE_TERMINATOR);
 
-        $payload = [];
+        $knownNodes = [];
 
         foreach ($this->connectionPool->getAll() as $conn) {
             if ($conn !== $connection && null !== $addrFrom = $this->connectionPool->getInfo($conn)->addrFrom) {
-                $payload[] = $addrFrom;
+                $knownNodes[] = $addrFrom;
             }
         }
 
-        $listKnownNodes = new Message(Message::TYPE_LIST_KNOWN_NODES, $payload);
+        $listKnownNodesMessage = $this->messageFactory->createListAllKnownHostsMessage($knownNodes);
 
-        $connection->write((string) $listKnownNodes);
+        $connection->write($listKnownNodesMessage . NodeInterface::MESSAGE_TERMINATOR);
     }
 
     public function onPeerDisconnected(ConnectionInterface $connection): void
@@ -67,7 +74,7 @@ final class NodeEventHandler implements NodeEventHandlerInterface
         echo sprintf("[%s] Data received: %s\n", $connection->getRemoteAddress(), $data);
 
         try {
-            $message = Message::fromString($data);
+            $message = $this->messageFactory->createFromString($data);
 
             $this->messageHandler->handle($connection, $message);
         } catch (\Throwable $e) {

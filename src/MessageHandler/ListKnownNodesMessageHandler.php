@@ -6,14 +6,14 @@ namespace Timesplinter\P2P\MessageHandler;
 
 use React\Socket\ConnectionInterface;
 use Timesplinter\P2P\MessageHandlerInterface;
-use Timesplinter\P2P\MessageInterface;
-use Timesplinter\P2P\PeerConnector;
+use Timesplinter\P2P\Message\MessageInterface;
+use Timesplinter\P2P\PeerConnectorInterface;
 
 final class ListKnownNodesMessageHandler implements MessageHandlerInterface
 {
-    private PeerConnector $peerConnector;
+    private PeerConnectorInterface $peerConnector;
 
-    public function __construct(PeerConnector $peerConnector)
+    public function __construct(PeerConnectorInterface $peerConnector)
     {
         $this->peerConnector = $peerConnector;
     }

@@ -6,7 +6,7 @@ namespace Timesplinter\P2P\MessageHandler;
 
 use React\Socket\ConnectionInterface;
 use Timesplinter\P2P\MessageHandlerInterface;
-use Timesplinter\P2P\MessageInterface;
+use Timesplinter\P2P\Message\MessageInterface;
 
 final class VersionAcknowledgedMessageHandler implements MessageHandlerInterface
 {

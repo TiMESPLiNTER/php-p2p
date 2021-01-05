@@ -66,12 +66,12 @@ final class PeerConnector implements PeerConnectorInterface
         $connection->on('data', function ($data) use ($connection) {
             $data = $this->connectionPool->getBuffer($connection) . $data;
 
-            if (false === $packageEndPos = strpos($data, Message::MESSAGE_TERMINATOR)) {
+            if (false === $packageEndPos = strpos($data, NodeInterface::MESSAGE_TERMINATOR)) {
                 $this->connectionPool->addBuffer($connection, $data);
                 return;
             }
 
-            $terminatorLength = strlen(Message::MESSAGE_TERMINATOR);
+            $terminatorLength = strlen(NodeInterface::MESSAGE_TERMINATOR);
 
             $this->connectionPool->addBuffer($connection, substr($data, $packageEndPos + $terminatorLength));
 
