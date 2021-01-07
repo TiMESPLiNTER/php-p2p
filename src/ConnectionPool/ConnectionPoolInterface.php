@@ -24,10 +24,6 @@ interface ConnectionPoolInterface
      */
     public function getAll(): iterable;
 
-    public function getBuffer(ConnectionInterface $connection): string;
-
-    public function addBuffer(ConnectionInterface $connection, string $buffer): void;
-
     public function getInfo(ConnectionInterface $connection): ConnectionInfo;
 
     public function containsPeerAddress(string $peerAddress): bool;

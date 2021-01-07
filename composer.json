@@ -4,7 +4,11 @@
     "ext-json": "*",
     "react/socket": "^0.8.12",
     "react/http": "^v0.8.7",
-    "ramsey/uuid": "^4.1.1"
+    "psr/log": "^1.1.3"
+  },
+  "require-dev": {
+    "ramsey/uuid": "^4.1.1",
+    "monolog/monolog": "^2.2.0"
   },
   "autoload": {
     "psr-4": {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Timesplinter\P2P;
 
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Log\LoggerInterface;
 use React\EventLoop\LoopInterface;
 use React\Http\Response;
 use React\Http\Server as HttpServer;
@@ -23,11 +24,18 @@ final class HttpNode implements NodeInterface
 
     private ConnectionPoolInterface $connectionPool;
 
-    public function __construct(NodeInterface $node, LoopInterface $loop, ConnectionPoolInterface $connectionPool)
-    {
+    private LoggerInterface $logger;
+
+    public function __construct(
+        NodeInterface $node,
+        LoopInterface $loop,
+        ConnectionPoolInterface $connectionPool,
+        LoggerInterface $logger
+    ) {
         $this->node = $node;
         $this->loop = $loop;
         $this->connectionPool = $connectionPool;
+        $this->logger = $logger;
     }
 
     public function run(): void
@@ -55,10 +63,11 @@ final class HttpNode implements NodeInterface
             foreach ($this->connectionPool->getAll() as $connection) {
                 $info = $this->connectionPool->getInfo($connection);
                 $peerList[] = sprintf(
-                    ' - %s (version: %s, address: %s)',
+                    ' - %s (version: %s, address: %s, last active: %s)',
                     $info->nodeId,
                     $info->version,
-                    $info->addrFrom
+                    $info->getOutboundRemoteAddress(),
+                    $info->getLastActive()->format(\DateTimeInterface::ATOM)
                 );
             }
 
@@ -88,7 +97,10 @@ final class HttpNode implements NodeInterface
         $socket = new SocketServer('0.0.0.0:0', $loop);
         $server->listen($socket);
 
-        echo 'Web interface reachable under ' . str_replace('tcp:', 'http:', $socket->getAddress()) . PHP_EOL;
+        $this->logger->info(sprintf(
+            'Web interface reachable under %s',
+            str_replace('tcp:', 'http:', $socket->getAddress())
+        ));
 
         return $server;
     }

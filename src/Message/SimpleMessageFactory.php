@@ -21,7 +21,7 @@ final class SimpleMessageFactory implements MessageFactoryInterface
         return new SimpleMessage(SimpleMessage::TYPE_VERSION_ACKNOWLEDGED);
     }
 
-    public function createListAllKnownHostsMessage(array $knownNodes): MessageInterface
+    public function createListKnownNodesMessage(array $knownNodes): MessageInterface
     {
         return new SimpleMessage(SimpleMessage::TYPE_LIST_KNOWN_NODES, $knownNodes);
     }

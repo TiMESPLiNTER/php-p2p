@@ -47,16 +47,6 @@ final class LimitedConnectionPool implements ConnectionPoolInterface
         return $this->connectionPool->getAll();
     }
 
-    public function getBuffer(ConnectionInterface $connection): string
-    {
-        return $this->connectionPool->getBuffer($connection);
-    }
-
-    public function addBuffer(ConnectionInterface $connection, string $buffer): void
-    {
-        $this->connectionPool->addBuffer($connection, $buffer);
-    }
-
     public function getInfo(ConnectionInterface $connection): ConnectionInfo
     {
         return $this->connectionPool->getInfo($connection);

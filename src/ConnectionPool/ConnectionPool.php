@@ -43,24 +43,6 @@ final class ConnectionPool implements ConnectionPoolInterface
         return $this->connections;
     }
 
-    public function getBuffer(ConnectionInterface $connection): string
-    {
-        $connectionInfo = $this->connections->offsetGet($connection);
-
-        $buffer = $connectionInfo->buffer;
-
-        $connectionInfo->buffer = '';
-
-        return $buffer;
-    }
-
-    public function addBuffer(ConnectionInterface $connection, string $buffer): void
-    {
-        $connectionInfo = $this->connections->offsetGet($connection);
-
-        $connectionInfo->buffer .= $buffer;
-    }
-
     public function getInfo(ConnectionInterface $connection): ConnectionInfo
     {
         return $this->connections->offsetGet($connection);
@@ -71,7 +53,7 @@ final class ConnectionPool implements ConnectionPoolInterface
         foreach ($this->connections as $connection) {
             $info = $this->getInfo($connection);
 
-            if ($info->addrFrom === $peerAddress) {
+            if ($info->getOutboundRemoteAddress() === $peerAddress) {
                 return true;
             }
         }

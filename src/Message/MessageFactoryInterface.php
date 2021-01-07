@@ -10,7 +10,7 @@ interface MessageFactoryInterface
 
     public function createVersionAcknowledgeMessage(): MessageInterface;
 
-    public function createListAllKnownHostsMessage(array $knownNodes): MessageInterface;
+    public function createListKnownNodesMessage(array $knownNodes): MessageInterface;
 
     public function createFromString(string $messageData): MessageInterface;
 }

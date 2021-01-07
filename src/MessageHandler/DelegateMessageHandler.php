@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Timesplinter\P2P\MessageHandler;
 
+use Psr\Log\LoggerInterface;
 use React\Socket\ConnectionInterface;
 use Timesplinter\P2P\Message\MessageInterface;
 use Timesplinter\P2P\MessageHandlerInterface;
@@ -13,14 +14,16 @@ final class DelegateMessageHandler implements MessageHandlerInterface
     /**
      * @var array<string, MessageHandlerInterface>
      */
-    private array $messageHandlerMap;
+    private array $messageHandlerMap = [];
+
+    private LoggerInterface $logger;
 
     /**
-     * @param array<string, MessageHandlerInterface> $messageHandlerMap
+     * @param LoggerInterface $logger
      */
-    public function __construct(array $messageHandlerMap = [])
+    public function __construct(LoggerInterface $logger)
     {
-        $this->messageHandlerMap = $messageHandlerMap;
+        $this->logger = $logger;
     }
 
     /**
@@ -40,11 +43,19 @@ final class DelegateMessageHandler implements MessageHandlerInterface
         $messageType = $message->getType();
 
         if (false === array_key_exists($messageType, $this->messageHandlerMap)) {
-            echo sprintf("[%s] Invalid message type: %s.\n", $connection->getRemoteAddress(), $messageType);
+            $this->logger->notice(sprintf(
+                '[%s] Unsupported message type: %s',
+                $connection->getRemoteAddress(),
+                $messageType
+            ));
             return;
         }
 
-        echo sprintf("[%s] Message of type `%s` received\n", $connection->getRemoteAddress(), $messageType);
+        $this->logger->debug(sprintf(
+            '[%s] Message of type `%s` received',
+            $connection->getRemoteAddress(),
+            $messageType
+        ));
 
         $messageHandler = $this->messageHandlerMap[$messageType];
 

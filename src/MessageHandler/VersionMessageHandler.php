@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Timesplinter\P2P\MessageHandler;
 
+use Psr\Log\LoggerInterface;
 use React\Socket\ConnectionInterface;
 use Timesplinter\P2P\ConnectionPool\ConnectionPoolInterface;
 use Timesplinter\P2P\Message\MessageFactoryInterface;
@@ -20,16 +21,20 @@ final class VersionMessageHandler implements MessageHandlerInterface
 
     private MessageFactoryInterface $messageFactory;
 
+    private LoggerInterface $logger;
+
     public function __construct(
         string $nodeId,
         string $acceptedVersion,
         ConnectionPoolInterface $connectionPool,
-        MessageFactoryInterface $messageFactory
+        MessageFactoryInterface $messageFactory,
+        LoggerInterface $logger
     ) {
         $this->nodeId = $nodeId;
         $this->acceptedVersion = $acceptedVersion;
         $this->connectionPool = $connectionPool;
         $this->messageFactory = $messageFactory;
+        $this->logger = $logger;
     }
 
     public function handle(ConnectionInterface $connection, MessageInterface $message)
@@ -37,7 +42,11 @@ final class VersionMessageHandler implements MessageHandlerInterface
         $nodeVersion = $message->getPayload()['version'];
 
         if ($this->acceptedVersion !== $nodeVersion) {
-            echo sprintf("[%s] Version `%s` is not supported\n", $connection->getRemoteAddress(), $nodeVersion);
+            $this->logger->error(sprintf(
+                '[%s] Version `%s` is not supported',
+                $connection->getRemoteAddress(),
+                $nodeVersion
+            ));
 
             // Remove connection from connection pool (connection get closed automatically by removing it)
             $this->connectionPool->remove($connection);
@@ -46,9 +55,11 @@ final class VersionMessageHandler implements MessageHandlerInterface
         }
 
         $nodeId = $message->getPayload()['node_id'];
+        $addrFrom = $message->getPayload()['addr_from'];
 
+        // Check if we connected to ourselves and drop connection if so
         if ($nodeId === $this->nodeId) {
-            echo sprintf("[%s] It's me\n", $connection->getRemoteAddress());
+            $this->logger->debug(sprintf('[%s] Loopback, dropping connection', $addrFrom));
 
             // Remove connection from connection pool (connection get closed automatically by removing it)
             $this->connectionPool->remove($connection);
@@ -58,7 +69,7 @@ final class VersionMessageHandler implements MessageHandlerInterface
 
         $connectionInfo = $this->connectionPool->getInfo($connection);
 
-        $connectionInfo->addrFrom = $message->getPayload()['addr_from'];
+        $connectionInfo->setOutboundRemoteAddress($addrFrom);
         $connectionInfo->nodeId = $message->getPayload()['node_id'];
         $connectionInfo->version = $message->getPayload()['version'];
 

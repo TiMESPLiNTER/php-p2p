@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Timesplinter\P2P;
 
+use Psr\Log\LoggerInterface;
 use React\Socket\ConnectionInterface;
 use Timesplinter\P2P\ConnectionPool\ConnectionPoolInterface;
 use Timesplinter\P2P\Message\MessageFactoryInterface;
@@ -20,27 +21,31 @@ final class NodeEventHandler implements NodeEventHandlerInterface
 
     private MessageFactoryInterface $messageFactory;
 
+    private LoggerInterface $logger;
+
     public function __construct(
         MessageFactoryInterface $messageFactory,
         MessageHandlerInterface $messageHandler,
-        ConnectionPoolInterface $connectionPool
+        ConnectionPoolInterface $connectionPool,
+        LoggerInterface $logger
     ) {
         $this->messageFactory = $messageFactory;
         $this->messageHandler = $messageHandler;
         $this->connectionPool = $connectionPool;
+        $this->logger = $logger;
     }
 
     public function onReady(NodeInterface $node): void
     {
         $this->node = $node;
 
-        echo sprintf("Listening on %s\n", $node->getAddress());
+        $this->logger->info(sprintf("Listening on %s", $node->getAddress()));
     }
 
     public function onPeerConnected(ConnectionInterface $connection): void
     {
-        echo sprintf("[%s] Connected\n", $connection->getRemoteAddress());
-        echo sprintf("Total peers connected: %d\n", $this->connectionPool->count());
+        $this->logger->info(sprintf('[%s] Connected', $connection->getRemoteAddress()));
+        $this->logger->debug(sprintf('Total peers connected: %d', $this->connectionPool->count()));
 
         $versionMessage = $this->messageFactory->createVersionMessage(
             $this->node->getNodeId(),
@@ -52,39 +57,63 @@ final class NodeEventHandler implements NodeEventHandlerInterface
 
         $knownNodes = [];
 
+        $thresholdDate = new \DateTime('-3 hours');
+
         foreach ($this->connectionPool->getAll() as $conn) {
-            if ($conn !== $connection && null !== $addrFrom = $this->connectionPool->getInfo($conn)->addrFrom) {
-                $knownNodes[] = $addrFrom;
+            if (
+                null === ($info = $this->connectionPool->getInfo($conn))->getOutboundRemoteAddress()
+            ) {
+                continue;
             }
+
+            // Don't announce nodes that haven't been active for a longer time
+            if ($info->getLastActive() < $thresholdDate) {
+                continue;
+            }
+
+            $knownNodes[] = $info->getOutboundRemoteAddress();
         }
 
-        $listKnownNodesMessage = $this->messageFactory->createListAllKnownHostsMessage($knownNodes);
+        $listKnownNodesMessage = $this->messageFactory->createListKnownNodesMessage($knownNodes);
 
         $this->connectionPool->sendMessage($connection, $listKnownNodesMessage);
     }
 
     public function onPeerDisconnected(ConnectionInterface $connection): void
     {
-        echo sprintf("[%s] Disconnected\n", $connection->getRemoteAddress());
-        echo sprintf("Total peers connected: %d\n", $this->connectionPool->count());
+        $this->logger->info(sprintf('[%s] Disconnected', $connection->getRemoteAddress()));
+        $this->logger->debug(sprintf('Total peers connected: %d', $this->connectionPool->count()));
     }
 
     public function onData(ConnectionInterface $connection, $data): void
     {
-        echo sprintf("[%s] Data received: %s\n", $connection->getRemoteAddress(), $data);
+        $this->logger->debug(
+            sprintf('[%s] Message received', $connection->getRemoteAddress()),
+            [
+                'addr_from' => $connection->getRemoteAddress(),
+                'raw_message_data' => $data,
+            ]
+        );
 
         try {
             $message = $this->messageFactory->createFromString($data);
 
             $this->messageHandler->handle($connection, $message);
         } catch (\Throwable $e) {
-            echo sprintf("[%s] Message data invalid: %s\n", $connection->getRemoteAddress(), $e->getMessage());
-            echo $e->getTraceAsString();
+            $this->logger->notice(sprintf(
+                '[%s] Message data invalid: %s',
+                $connection->getRemoteAddress(),
+                $e->getMessage()
+            ));
         }
     }
 
     public function onPeerRejected(ConnectionInterface $connection, \Throwable $reason): void
     {
-        echo sprintf("[%s] Connection failed: %s\n", $connection->getRemoteAddress(), $reason->getMessage());
+        $this->logger->notice(sprintf(
+            '[%s] Connection failed: %s',
+            $connection->getRemoteAddress(),
+            $reason->getMessage()
+        ));
     }
 }

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Timesplinter\P2P\Message\Example;
 
+use Monolog\Formatter\LineFormatter;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 use Ramsey\Uuid\Uuid;
 use React\EventLoop\Factory;
 use React\Socket\TcpConnector;
@@ -28,6 +31,13 @@ $listeningPort = (int) $argv[1] ?? 0;
 // Seed peer addresses for a start
 $initialPeerAddresses = isset($argv[2]) ? explode(',', $argv[2]) : [];
 
+$loggerStdoutHandler = new StreamHandler('php://stdout', Logger::DEBUG);
+$loggerStdoutHandler->setFormatter(
+    new LineFormatter("[%datetime%] %level_name%: %message% %context%\n", 'Y-m-d H:i:s')
+);
+$logger = new Logger('default');
+$logger->pushHandler($loggerStdoutHandler);
+
 // Create a new connection pool to manage peer connections
 $connectionPool = new LimitedConnectionPool(
     new ConnectionPool(),
@@ -35,13 +45,13 @@ $connectionPool = new LimitedConnectionPool(
 );
 
 // Create a new message handle to handle messages received by connected peers
-$messageHandler = new DelegateMessageHandler();
+$messageHandler = new DelegateMessageHandler($logger);
 
 // Create message factory instance to support the basic messages required for a working node
 $messageFactory = new SimpleMessageFactory();
 
 // Handle basic events of this node (peer connected/disconnected, message received from peer, etc)
-$nodeEventHandler = new NodeEventHandler($messageFactory, $messageHandler, $connectionPool);
+$nodeEventHandler = new NodeEventHandler($messageFactory, $messageHandler, $connectionPool, $logger);
 
 // Create the very basic loop used for the whole reactive stuff
 $loop = Factory::create();
@@ -67,7 +77,7 @@ $node = new Node(
 $messageHandler
     ->addMessageHandler(
         SimpleMessage::TYPE_VERSION,
-        new VersionMessageHandler($nodeId, NodeEventHandler::NODE_VERSION, $connectionPool, $messageFactory)
+        new VersionMessageHandler($nodeId, NodeEventHandler::NODE_VERSION, $connectionPool, $messageFactory, $logger)
     )
     ->addMessageHandler(
         SimpleMessage::TYPE_VERSION_ACKNOWLEDGED,
@@ -79,7 +89,7 @@ $messageHandler
     );
 
 // Wrap the actual node into an http node that provides a web interface with some basic stats about the wrapped node
-$httpNode = new HttpNode($node, $loop, $connectionPool);
+$httpNode = new HttpNode($node, $loop, $connectionPool, $logger);
 
 // Run the whole thing
 $httpNode->run();
