@@ -9,7 +9,6 @@ use Timesplinter\P2P\ConnectionPool\ConnectionPoolInterface;
 use Timesplinter\P2P\Message\MessageFactoryInterface;
 use Timesplinter\P2P\MessageHandlerInterface;
 use Timesplinter\P2P\Message\MessageInterface;
-use Timesplinter\P2P\NodeInterface;
 
 final class VersionMessageHandler implements MessageHandlerInterface
 {
@@ -64,6 +63,6 @@ final class VersionMessageHandler implements MessageHandlerInterface
         $connectionInfo->version = $message->getPayload()['version'];
 
         $versionAcknowledgeMessage = $this->messageFactory->createVersionAcknowledgeMessage();
-        $connection->write($versionAcknowledgeMessage . NodeInterface::MESSAGE_TERMINATOR);
+        $this->connectionPool->sendMessage($connection, $versionAcknowledgeMessage);
     }
 }

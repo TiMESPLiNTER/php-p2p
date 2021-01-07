@@ -48,7 +48,7 @@ final class NodeEventHandler implements NodeEventHandlerInterface
             $this->node->getAddress()
         );
 
-        $connection->write($versionMessage . NodeInterface::MESSAGE_TERMINATOR);
+        $this->connectionPool->sendMessage($connection, $versionMessage);
 
         $knownNodes = [];
 
@@ -60,7 +60,7 @@ final class NodeEventHandler implements NodeEventHandlerInterface
 
         $listKnownNodesMessage = $this->messageFactory->createListAllKnownHostsMessage($knownNodes);
 
-        $connection->write($listKnownNodesMessage . NodeInterface::MESSAGE_TERMINATOR);
+        $this->connectionPool->sendMessage($connection, $listKnownNodesMessage);
     }
 
     public function onPeerDisconnected(ConnectionInterface $connection): void

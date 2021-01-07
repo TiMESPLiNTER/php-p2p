@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Timesplinter\P2P\ConnectionPool;
 
 use React\Socket\ConnectionInterface;
+use Timesplinter\P2P\Message\MessageInterface;
+use Timesplinter\P2P\NodeInterface;
 
 final class ConnectionPool implements ConnectionPoolInterface
 {
@@ -75,5 +77,10 @@ final class ConnectionPool implements ConnectionPoolInterface
         }
 
         return false;
+    }
+
+    public function sendMessage(ConnectionInterface $connection, MessageInterface $message)
+    {
+        $connection->write($message . NodeInterface::MESSAGE_TERMINATOR);
     }
 }

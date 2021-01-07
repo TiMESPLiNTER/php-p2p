@@ -10,6 +10,7 @@ use React\Http\Response;
 use React\Http\Server as HttpServer;
 use React\Socket\Server as SocketServer;
 use Timesplinter\P2P\ConnectionPool\ConnectionPoolInterface;
+use Timesplinter\P2P\ConnectionPool\LimitedConnectionPool;
 
 /**
  * Decorates a node with a web interface that displays some basic information about the decorated node
@@ -61,11 +62,17 @@ final class HttpNode implements NodeInterface
                 );
             }
 
+            $peerCount = (string) $this->connectionPool->count();
+
+            if ($this->connectionPool instanceof LimitedConnectionPool) {
+                $peerCount .= '/' . $this->connectionPool->getMaxConnections();
+            }
+
             $body = sprintf(
-                "Node ID: %s\nAddress: %s\nConnected peers: %d\n\n%s",
+                "Node ID: %s\nAddress: %s\nConnected peers: %s\n\n%s",
                 $this->node->getNodeId(),
                 $this->node->getAddress(),
-                $this->connectionPool->count(),
+                $peerCount,
                 implode("\n", $peerList)
             );
 

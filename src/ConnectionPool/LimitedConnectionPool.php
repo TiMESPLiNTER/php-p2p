@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Timesplinter\P2P\ConnectionPool;
 
 use React\Socket\ConnectionInterface;
+use Timesplinter\P2P\Message\MessageInterface;
 
 final class LimitedConnectionPool implements ConnectionPoolInterface
 {
@@ -64,5 +65,15 @@ final class LimitedConnectionPool implements ConnectionPoolInterface
     public function containsPeerAddress(string $peerAddress): bool
     {
         return $this->connectionPool->containsPeerAddress($peerAddress);
+    }
+
+    public function sendMessage(ConnectionInterface $connection, MessageInterface $message)
+    {
+        $this->connectionPool->sendMessage($connection, $message);
+    }
+
+    public function getMaxConnections(): int
+    {
+        return $this->maxConnections;
     }
 }
