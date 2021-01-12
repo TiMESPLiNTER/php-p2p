@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Timesplinter\P2P\ConnectionPool;
 
-use React\Socket\ConnectionInterface;
-use Timesplinter\P2P\Message\MessageInterface;
+use Timesplinter\P2P\PeerInterface;
+use Timesplinter\P2P\PeerUriInterface;
 
 final class LimitedConnectionPool implements ConnectionPoolInterface
 {
@@ -23,18 +23,19 @@ final class LimitedConnectionPool implements ConnectionPoolInterface
         $this->maxConnections = $maxConnections;
     }
 
-    public function add(ConnectionInterface $connection): void
+    public function add(PeerInterface $peer): void
     {
+        // TODO first remove old connections above a certain threshold (that might be provided over constructor)
         if ($this->connectionPool->count() >= $this->maxConnections) {
             throw new ConnectionPoolException(sprintf('Maximum connections reached: %d', $this->maxConnections));
         }
 
-        $this->connectionPool->add($connection);
+        $this->connectionPool->add($peer);
     }
 
-    public function remove(ConnectionInterface $connection): void
+    public function remove(PeerInterface $peer): void
     {
-        $this->connectionPool->remove($connection);
+        $this->connectionPool->remove($peer);
     }
 
     public function count(): int
@@ -42,24 +43,17 @@ final class LimitedConnectionPool implements ConnectionPoolInterface
         return $this->connectionPool->count();
     }
 
+    /**
+     * @return iterable<PeerInterface>
+     */
     public function getAll(): iterable
     {
         return $this->connectionPool->getAll();
     }
 
-    public function getInfo(ConnectionInterface $connection): ConnectionInfo
+    public function getByPeerUri(PeerUriInterface $peerUri): ?PeerInterface
     {
-        return $this->connectionPool->getInfo($connection);
-    }
-
-    public function containsPeerAddress(string $peerAddress): bool
-    {
-        return $this->connectionPool->containsPeerAddress($peerAddress);
-    }
-
-    public function sendMessage(ConnectionInterface $connection, MessageInterface $message)
-    {
-        $this->connectionPool->sendMessage($connection, $message);
+        return $this->connectionPool->getByPeerUri($peerUri);
     }
 
     public function getMaxConnections(): int

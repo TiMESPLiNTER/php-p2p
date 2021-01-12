@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Timesplinter\P2P\Message;
+namespace Timesplinter\P2P\Protocol\Application\Simple\Message;
 
 use Ramsey\Uuid\Uuid;
+use Timesplinter\P2P\Protocol\ProtocolMessageInterface;
 
-final class SimpleMessage implements MessageInterface
+final class SimpleMessage implements ProtocolMessageInterface
 {
     public const TYPE_VERSION_ACKNOWLEDGED = 'verack';
 

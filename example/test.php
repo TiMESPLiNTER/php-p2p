@@ -9,19 +9,19 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Ramsey\Uuid\Uuid;
 use React\EventLoop\Factory;
-use React\Socket\TcpConnector;
-use Timesplinter\P2P\HttpNode;
 use Timesplinter\P2P\ConnectionPool\ConnectionPool;
 use Timesplinter\P2P\ConnectionPool\LimitedConnectionPool;
-use Timesplinter\P2P\Message\SimpleMessage;
-use Timesplinter\P2P\Message\SimpleMessageFactory;
-use Timesplinter\P2P\MessageHandler\DelegateMessageHandler;
-use Timesplinter\P2P\MessageHandler\ListKnownNodesMessageHandler;
-use Timesplinter\P2P\MessageHandler\VersionAcknowledgedMessageHandler;
-use Timesplinter\P2P\MessageHandler\VersionMessageHandler;
 use Timesplinter\P2P\Node;
-use Timesplinter\P2P\NodeEventHandler;
 use Timesplinter\P2P\PeerConnector;
+use Timesplinter\P2P\Protocol\Application\Simple\Message\SimpleMessage;
+use Timesplinter\P2P\Protocol\Application\Simple\MessageHandler\DelegateMessageHandler;
+use Timesplinter\P2P\Protocol\Application\Simple\MessageHandler\ListKnownNodesMessageHandler;
+use Timesplinter\P2P\Protocol\Application\Simple\MessageHandler\VersionAcknowledgedMessageHandler;
+use Timesplinter\P2P\Protocol\Application\Simple\MessageHandler\VersionMessageHandler;
+use Timesplinter\P2P\Protocol\Application\Simple\SimpleApplicationProtocol;
+use Timesplinter\P2P\Protocol\Application\Simple\SimpleProtocolTransport;
+use Timesplinter\P2P\Protocol\Transport\TcpTransportProtocolFactory;
+use Timesplinter\P2P\WebInterface;
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -44,52 +44,55 @@ $connectionPool = new LimitedConnectionPool(
     10
 );
 
+// Create a unique node ID (although the remote address should be unique as well)
+$nodeId = Uuid::uuid4()->getHex()->toString();
+
+$messageWriter = $messageReader = new SimpleProtocolTransport();
+
 // Create a new message handle to handle messages received by connected peers
-$messageHandler = new DelegateMessageHandler($logger);
+$messageHandler = (new DelegateMessageHandler($logger))
+    ->addMessageHandler(
+        SimpleMessage::TYPE_VERSION,
+        new VersionMessageHandler($messageWriter, $logger)
+    )
+    ->addMessageHandler(
+        SimpleMessage::TYPE_VERSION_ACKNOWLEDGED,
+        new VersionAcknowledgedMessageHandler($messageWriter, $logger)
+    )
+    ->addMessageHandler(
+        SimpleMessage::TYPE_LIST_KNOWN_NODES,
+        new ListKnownNodesMessageHandler()
+    );
 
-// Create message factory instance to support the basic messages required for a working node
-$messageFactory = new SimpleMessageFactory();
-
-// Handle basic events of this node (peer connected/disconnected, message received from peer, etc)
-$nodeEventHandler = new NodeEventHandler($messageFactory, $messageHandler, $connectionPool, $logger);
+$applicationProtocol = new SimpleApplicationProtocol($messageHandler, $messageReader, $messageWriter, $logger);
 
 // Create the very basic loop used for the whole reactive stuff
 $loop = Factory::create();
 
-// Create a peer connector that manages the establishment of connections to other peers discovered in the network
-$peerConnector = new PeerConnector(new TcpConnector($loop), $connectionPool, $nodeEventHandler);
+$transportProtocolFactory = new TcpTransportProtocolFactory($loop);
 
-// Create a unique node ID (although the remote address should be unique as well)
-$nodeId = Uuid::uuid4()->toString();
+// Create a peer connector that manages the establishment of connections to other peers discovered in the network
+$peerConnector = new PeerConnector($transportProtocolFactory->getConnector());
+
+$server = $transportProtocolFactory->getServer($listeningPort);
 
 // Create the actual node
 $node = new Node(
     $nodeId,
-    $listeningPort,
-    $initialPeerAddresses,
+    $server,
     $loop,
     $connectionPool,
-    $nodeEventHandler,
-    $peerConnector
+    $peerConnector,
+    $applicationProtocol
 );
 
-// Add messages handlers to the delegate message handler to handle all the network messages properly
-$messageHandler
-    ->addMessageHandler(
-        SimpleMessage::TYPE_VERSION,
-        new VersionMessageHandler($nodeId, NodeEventHandler::NODE_VERSION, $connectionPool, $messageFactory, $logger)
-    )
-    ->addMessageHandler(
-        SimpleMessage::TYPE_VERSION_ACKNOWLEDGED,
-        new VersionAcknowledgedMessageHandler()
-    )
-    ->addMessageHandler(
-        SimpleMessage::TYPE_LIST_KNOWN_NODES,
-        new ListKnownNodesMessageHandler($peerConnector)
-    );
+$loop->addTimer(0, function () use ($node, $initialPeerAddresses) {
+    foreach ($initialPeerAddresses as $peerAddress) {
+        $node->connectToPeer($peerAddress);
+    }
+});
 
-// Wrap the actual node into an http node that provides a web interface with some basic stats about the wrapped node
-$httpNode = new HttpNode($node, $loop, $connectionPool, $logger);
+$webInterface = new WebInterface($node, $logger);
+$webInterface->createHttpServer($loop);
 
-// Run the whole thing
-$httpNode->run();
+$loop->run();

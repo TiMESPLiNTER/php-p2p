@@ -4,29 +4,25 @@ declare(strict_types=1);
 
 namespace Timesplinter\P2P\ConnectionPool;
 
-use React\Socket\ConnectionInterface;
-use Timesplinter\P2P\Message\MessageInterface;
+use Timesplinter\P2P\PeerInterface;
+use Timesplinter\P2P\PeerUriInterface;
 
 interface ConnectionPoolInterface
 {
     /**
-     * @param ConnectionInterface $connection
+     * @param PeerInterface $peer
      * @throws ConnectionPoolException
      */
-    public function add(ConnectionInterface $connection): void;
+    public function add(PeerInterface $peer): void;
 
-    public function remove(ConnectionInterface $connection): void;
+    public function remove(PeerInterface $peer): void;
 
     public function count(): int;
 
     /**
-     * @return iterable<ConnectionInterface>
+     * @return iterable<PeerInterface>
      */
     public function getAll(): iterable;
 
-    public function getInfo(ConnectionInterface $connection): ConnectionInfo;
-
-    public function containsPeerAddress(string $peerAddress): bool;
-
-    public function sendMessage(ConnectionInterface $connection, MessageInterface $message);
+    public function getByPeerUri(PeerUriInterface $peerUri): ?PeerInterface;
 }

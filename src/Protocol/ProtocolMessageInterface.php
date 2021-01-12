@@ -2,12 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Timesplinter\P2P\Message;
+namespace Timesplinter\P2P\Protocol;
 
-interface MessageInterface
+interface ProtocolMessageInterface
 {
-    public function __toString(): string;
-
     /**
      * @return mixed
      */

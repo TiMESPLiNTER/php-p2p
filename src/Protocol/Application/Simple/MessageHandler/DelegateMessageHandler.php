@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Timesplinter\P2P\MessageHandler;
+namespace Timesplinter\P2P\Protocol\Application\Simple\MessageHandler;
 
 use Psr\Log\LoggerInterface;
-use React\Socket\ConnectionInterface;
-use Timesplinter\P2P\Message\MessageInterface;
-use Timesplinter\P2P\MessageHandlerInterface;
+use Timesplinter\P2P\NodeInterface;
+use Timesplinter\P2P\PeerInterface;
+use Timesplinter\P2P\Protocol\ProtocolMessageInterface;
 
 final class DelegateMessageHandler implements MessageHandlerInterface
 {
@@ -38,14 +38,14 @@ final class DelegateMessageHandler implements MessageHandlerInterface
         return $this;
     }
 
-    public function handle(ConnectionInterface $connection, MessageInterface $message)
+    public function handle(NodeInterface $node, PeerInterface $peer, ProtocolMessageInterface $message): void
     {
         $messageType = $message->getType();
 
         if (false === array_key_exists($messageType, $this->messageHandlerMap)) {
             $this->logger->notice(sprintf(
                 '[%s] Unsupported message type: %s',
-                $connection->getRemoteAddress(),
+                $peer->get('outboundRemoteAddress'),
                 $messageType
             ));
             return;
@@ -53,12 +53,12 @@ final class DelegateMessageHandler implements MessageHandlerInterface
 
         $this->logger->debug(sprintf(
             '[%s] Message of type `%s` received',
-            $connection->getRemoteAddress(),
+            $peer->get('outboundRemoteAddress'),
             $messageType
         ));
 
         $messageHandler = $this->messageHandlerMap[$messageType];
 
-        $messageHandler->handle($connection, $message);
+        $messageHandler->handle($node, $peer, $message);
     }
 }

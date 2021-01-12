@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Timesplinter\P2P\ConnectionPool;
 
-use React\Socket\ConnectionInterface;
-use Timesplinter\P2P\Message\MessageInterface;
-use Timesplinter\P2P\NodeInterface;
+use Timesplinter\P2P\PeerInterface;
+use Timesplinter\P2P\PeerUriInterface;
 
 final class ConnectionPool implements ConnectionPoolInterface
 {
     /**
-     * @var \SplObjectStorage<ConnectionInterface, ConnectionInfo>
+     * @var \SplObjectStorage<PeerInterface>
      */
     private \SplObjectStorage $connections;
 
@@ -20,17 +19,17 @@ final class ConnectionPool implements ConnectionPoolInterface
         $this->connections = new \SplObjectStorage();
     }
 
-    public function add(ConnectionInterface $connection): void
+    public function add(PeerInterface $peer): void
     {
-        $this->connections->attach($connection, new ConnectionInfo());
+        $this->connections->attach($peer);
     }
 
-    public function remove(ConnectionInterface $connection): void
+    public function remove(PeerInterface $peer): void
     {
         // Ensure connection is closed before we loose any reference to it
-        $connection->close();
+        $peer->close();
 
-        $this->connections->detach($connection);
+        $this->connections->detach($peer);
     }
 
     public function count(): int
@@ -38,31 +37,22 @@ final class ConnectionPool implements ConnectionPoolInterface
         return $this->connections->count();
     }
 
+    /**
+     * @return iterable<PeerInterface>
+     */
     public function getAll(): iterable
     {
         return $this->connections;
     }
 
-    public function getInfo(ConnectionInterface $connection): ConnectionInfo
+    public function getByPeerUri(PeerUriInterface $peerUri): ?PeerInterface
     {
-        return $this->connections->offsetGet($connection);
-    }
-
-    public function containsPeerAddress(string $peerAddress): bool
-    {
-        foreach ($this->connections as $connection) {
-            $info = $this->getInfo($connection);
-
-            if ($info->getOutboundRemoteAddress() === $peerAddress) {
-                return true;
+        foreach ($this->connections as $peer) {
+            if ((string) $peer->getUri() === (string) $peerUri) {
+                return $peer;
             }
         }
 
-        return false;
-    }
-
-    public function sendMessage(ConnectionInterface $connection, MessageInterface $message)
-    {
-        $connection->write($message . NodeInterface::MESSAGE_TERMINATOR);
+        return null;
     }
 }
